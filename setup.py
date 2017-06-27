@@ -28,6 +28,7 @@ setup(
         'PyStaticConfiguration >= 0.10.3',
         'simplejson',
         'six>=1.4.0',
+        'yelp-meteorite',
     ],
     extras_require={
         'uwsgi': ['uWSGI'],

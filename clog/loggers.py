@@ -38,6 +38,7 @@ import thriftpy
 
 
 from clog import config
+from clog.metrics_reporter import MetricsReporter
 from clog.utils import scribify
 
 import thriftpy.transport.socket
@@ -148,6 +149,8 @@ class ScribeLogger(object):
         self.__lock = threading.RLock()
         self._birth_pid = os.getpid()
 
+        self.metrics = MetricsReporter()
+
     def _maybe_reconnect(self):
         """Try (re)connecting to the server if it's been long enough since our
         last attempt.
@@ -199,37 +202,39 @@ class ScribeLogger(object):
            If the line size is over 5 MB, a message consisting origin stream information
            will be recorded at WHO_CLOG_LARGE_LINE_STREAM (in json format).
         """
-        # log unicodes as their utf-8 encoded representation
-        if isinstance(line, six.text_type):
-            line = line.encode('UTF-8')
+        with self.metrics.sampled_request():
+            # log unicodes as their utf-8 encoded representation
+            if isinstance(line, six.text_type):
+                line = line.encode('UTF-8')
 
-        # check log line size
-        if len(line) <= WARNING_LINE_SIZE_IN_BYTES:
-            self._log_line_no_size_limit(stream, line)
-        elif len(line) <= MAX_LINE_SIZE_IN_BYTES:
-            self._log_line_no_size_limit(stream, line)
+            # check log line size
+            if len(line) <= WARNING_LINE_SIZE_IN_BYTES:
+                self._log_line_no_size_limit(stream, line)
+            elif len(line) <= MAX_LINE_SIZE_IN_BYTES:
+                self._log_line_no_size_limit(stream, line)
 
-            # log the origin of the stream with traceback to WHO_CLOG_LARGE_LINE_STREAM category
-            origin_info = {}
-            origin_info['stream'] = stream
-            origin_info['line_size'] = len(line)
-            origin_info['traceback'] = ''.join(traceback.format_stack())
-            log_line = json.dumps(origin_info).encode('UTF-8')
-            self._log_line_no_size_limit(WHO_CLOG_LARGE_LINE_STREAM, log_line)
-            self.report_status(
-                False,
-                'The log line size is larger than %r bytes (monitored in \'%s\')'
-                % (WARNING_LINE_SIZE_IN_BYTES, WHO_CLOG_LARGE_LINE_STREAM)
-            )
-        else:
-            # raise an exception if too large
-            self.report_status(
-                True,
-                'The log line is dropped (line size larger than %r bytes)'
-                % MAX_LINE_SIZE_IN_BYTES
-            )
-            raise LogLineIsTooLongError('The max log line size allowed is %r bytes'
-                % MAX_LINE_SIZE_IN_BYTES)
+                # log the origin of the stream with traceback to WHO_CLOG_LARGE_LINE_STREAM category
+                origin_info = {}
+                origin_info['stream'] = stream
+                origin_info['line_size'] = len(line)
+                origin_info['traceback'] = ''.join(traceback.format_stack())
+                log_line = json.dumps(origin_info).encode('UTF-8')
+                self._log_line_no_size_limit(WHO_CLOG_LARGE_LINE_STREAM, log_line)
+                self.report_status(
+                    False,
+                    'The log line size is larger than %r bytes (monitored in \'%s\')'
+                    % (WARNING_LINE_SIZE_IN_BYTES, WHO_CLOG_LARGE_LINE_STREAM)
+                )
+            else:
+                # raise an exception if too large
+                self.report_status(
+                    True,
+                    'The log line is dropped (line size larger than %r bytes)'
+                    % MAX_LINE_SIZE_IN_BYTES
+                )
+                raise LogLineIsTooLongError('The max log line size allowed is %r bytes'
+                    % MAX_LINE_SIZE_IN_BYTES)
+
 
     def close(self):
         self.transport.close()
