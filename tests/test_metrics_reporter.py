@@ -44,7 +44,7 @@ class TestMetricsReporter(object):
         with metrics.sampled_request():
             assert not mock_sample_log_line_sent_count.called
             assert metrics._sample_counter == 0
-        assert mock_sample_log_line_sent_count.called is True
+        assert mock_sample_log_line_sent_count.call_count == 1
 
     @mock.patch('clog.metrics_reporter.MetricsReporter._sample_log_line_sent.count')
     def test_zero_sample_rate(self, mock_sample_log_line_sent_count):
@@ -60,13 +60,13 @@ class TestMetricsReporter(object):
     def test_fake_counter_creation(self, mock_create_counter):
         from clog.metrics_reporter import _create_or_fake_counter
         assert type(_create_or_fake_counter("my_counter")) is FakeMetric
-        assert mock_create_counter.called is True
+        assert mock_create_counter.call_count == 1
 
     @mock.patch('clog.metrics_reporter.create_timer', create=True, side_effect=NameError)
     def test_fake_timer_creation(self, mock_create_timer):
         from clog.metrics_reporter import _create_or_fake_timer
         assert type(_create_or_fake_timer("my_timer")) is FakeMetric
-        assert mock_create_timer.called is True
+        assert mock_create_timer.call_count == 1
 
     def test_fake_metric_functionality(self):
         metrics = MetricsReporter(sample_rate=1)
