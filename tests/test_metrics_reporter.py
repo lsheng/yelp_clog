@@ -23,7 +23,7 @@ from clog.metrics_reporter import MetricsReporter
 @pytest.mark.acceptance_suite
 class TestMetricsReporter(object):
 
-    @mock.patch('clog.metrics_reporter.MetricsReporter._sample_log_line_sent.count')
+    @mock.patch('clog.metrics_reporter.MetricsReporter._sample_log_line_sent.count', autospec=True)
     def test_metrics_reporter_sampling(self, mock_sample_log_line_sent_count):
         metrics = MetricsReporter(sample_rate=3)
 
@@ -46,7 +46,7 @@ class TestMetricsReporter(object):
             assert metrics._sample_counter == 0
         assert mock_sample_log_line_sent_count.call_count == 1
 
-    @mock.patch('clog.metrics_reporter.MetricsReporter._sample_log_line_sent.count')
+    @mock.patch('clog.metrics_reporter.MetricsReporter._sample_log_line_sent.count', autospec=True)
     def test_zero_sample_rate(self, mock_sample_log_line_sent_count):
         metrics = MetricsReporter(sample_rate=0)
         assert metrics._sample_counter == 0
